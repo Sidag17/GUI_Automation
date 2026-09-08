@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.4.2 (Python 3.12.10 on win32)" generated="2026-09-07T17:10:40.523647" rpa="true" schemaversion="5">
+<suite id="s1" name="Select Board" source="C:\Work\GUI Automation\GUI_Automation_Robot\tests\select_board.robot">
+<test id="s1-t1" name="Create Machine Learning Application" line="12">
+<kw name="Open Studio" owner="StudioLibrary">
+<msg time="2026-09-07T17:10:40.976632" level="INFO">Opening Simplicity Studio...</msg>
+<status status="PASS" start="2026-09-07T17:10:40.856591" elapsed="0.120041"/>
+</kw>
+<kw name="Wait For Main Screen" owner="StudioLibrary">
+<msg time="2026-09-07T17:10:49.852657" level="INFO">Waiting for Simplicity Studio main screen...
+Studio is still loading...
+Studio is still loading...
+Studio is still loading...
+Main Studio screen ready: 'Simplicity Studio® 289'</msg>
+<status status="PASS" start="2026-09-07T17:10:40.976632" elapsed="8.876025"/>
+</kw>
+<kw name="Maximize Studio" owner="StudioLibrary">
+<msg time="2026-09-07T17:10:49.859066" level="INFO">Main Studio window maximized.</msg>
+<status status="PASS" start="2026-09-07T17:10:49.853642" elapsed="0.005424"/>
+</kw>
+<kw name="Close Previous Tabs" owner="StudioLibrary">
+<msg time="2026-09-07T17:10:51.460530" level="INFO">Checking previous Studio tabs...
+Open top tabs: ['Home']
+No previous board/project tabs are open.</msg>
+<status status="PASS" start="2026-09-07T17:10:49.860816" elapsed="1.599714"/>
+</kw>
+<kw name="Open Devices" owner="StudioLibrary">
+<msg time="2026-09-07T17:10:54.199147" level="INFO">Waiting for DEVICES...
+DEVICES clicked.
+Waiting for Devices search box...
+Devices page is still loading...
+Devices search box found.</msg>
+<status status="PASS" start="2026-09-07T17:10:51.460530" elapsed="2.738617"/>
+</kw>
+<kw name="Search Board" owner="StudioLibrary">
+<msg time="2026-09-07T17:10:54.464194" level="INFO">Searching for board: 2601B
+Search text entered: 2601B</msg>
+<arg>${BOARD}</arg>
+<status status="PASS" start="2026-09-07T17:10:54.199147" elapsed="0.265047"/>
+</kw>
+<kw name="Select Board" owner="StudioLibrary">
+<msg time="2026-09-07T17:11:01.434125" level="INFO">Waiting for board result containing '2601B'...
+Board result not ready yet...
+Board result not ready yet...
+Board result not ready yet...
+Board result not ready yet...
+Selected board result: 'EFR32xG24 Dev Kit Board (BRD2601B)' | Type: TreeItem
+Clicking board result: EFR32xG24 Dev Kit Board (BRD2601B)
+Board clicked successfully.</msg>
+<arg>${BOARD}</arg>
+<status status="PASS" start="2026-09-07T17:10:54.464194" elapsed="6.969931"/>
+</kw>
+<kw name="Open Example Projects And Demos" owner="StudioLibrary">
+<msg time="2026-09-07T17:11:06.273589" level="INFO">Looking for EXAMPLE PROJECTS &amp; DEMOS...
+EXAMPLE PROJECTS &amp; DEMOS not ready yet...
+FOUND: 'EXAMPLE PROJECTS &amp; DEMOS' | Type: TabItem | AutomationID: ''
+FOUND: 'EXAMPLE PROJECTS &amp; DEMOS' | Type: Text | AutomationID: ''
+Using: 'EXAMPLE PROJECTS &amp; DEMOS' | Type: TabItem
+EXAMPLE PROJECTS &amp; DEMOS clicked.
+Waiting for Example Projects &amp; Demos page...
+Waiting for Example Projects page to become ready...
+Example Projects page is ready.
+Example Projects &amp; Demos page loaded.</msg>
+<status status="PASS" start="2026-09-07T17:11:01.434125" elapsed="4.839464"/>
+</kw>
+<kw name="Search Application" owner="StudioLibrary">
+<msg time="2026-09-07T17:11:12.476094" level="INFO">Searching for application: AI/ML - SoC Blink EFR32
+Waiting for Example Projects &amp; Demos page...
+Waiting for Example Projects page to become ready...
+Example Projects page is ready.
+Example Projects &amp; Demos page loaded.
+Application search entered: AI/ML - SoC Blink EFR32
+Waiting for application result: AI/ML - SoC Blink EFR32
+Waiting for application result...
+Application result found: AI/ML - SoC Blink EFR32</msg>
+<arg>${APPLICATION}</arg>
+<status status="PASS" start="2026-09-07T17:11:06.275646" elapsed="6.200448"/>
+</kw>
+<kw name="Create Production Application" owner="StudioLibrary">
+<msg time="2026-09-07T17:11:13.751393" level="INFO">Looking for application: AI/ML - SoC Blink EFR32
+Application found: AI/ML - SoC Blink EFR32
+Application scroll_into_view not available: 'StaticWrapper' object has no attribute 'scroll_into_view'
+Application quality: Production
+CREATE button found.
+CREATE scroll_into_view not available: 'ButtonWrapper' object has no attribute 'scroll_into_view'
+CREATE clicked for Production application: AI/ML - SoC Blink EFR32</msg>
+<arg>${APPLICATION}</arg>
+<status status="PASS" start="2026-09-07T17:11:12.476094" elapsed="1.275610"/>
+</kw>
+<kw name="Select Target IDE" owner="StudioLibrary">
+<msg time="2026-09-07T17:11:16.501367" level="INFO">Requested Target IDE: VS Code (LLVM)
+Waiting for Project Configuration...
+Project Configuration still loading...
+Project Configuration is ready.
+Current Target IDE: VS Code (LLVM)
+Target IDE already selected: VS Code (LLVM)</msg>
+<arg>${TARGET_IDE}</arg>
+<status status="PASS" start="2026-09-07T17:11:13.751704" elapsed="2.749663"/>
+</kw>
+<kw name="Finish Project Creation" owner="StudioLibrary">
+<msg time="2026-09-07T17:11:24.411818" level="INFO">Waiting for FINISH button...
+Waiting for Project Configuration...
+Project Configuration is ready.
+FINISH button found.
+FINISH clicked.
+Waiting for Project Configuration to close...
+Project creation in progress...
+Project creation in progress...
+Project Configuration closed.</msg>
+<status status="PASS" start="2026-09-07T17:11:16.501367" elapsed="7.910451"/>
+</kw>
+<status status="PASS" start="2026-09-07T17:10:40.855263" elapsed="43.556555"/>
+</test>
+<status status="PASS" start="2026-09-07T17:10:40.528507" elapsed="43.893593"/>
+</suite>
+<statistics>
+<total>
+<stat pass="1" fail="0" skip="0">All Tasks</stat>
+</total>
+<tag>
+</tag>
+<suite>
+<stat name="Select Board" id="s1" pass="1" fail="0" skip="0">Select Board</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>
