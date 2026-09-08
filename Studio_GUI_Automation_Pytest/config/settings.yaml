@@ -1,0 +1,9 @@
+studio:
+  # Developer-machine default. Prefer SIMPLICITY_STUDIO_EXE in CI or on
+  # machines where Studio is installed somewhere else.
+  executable: 'C:\Users\siagrawa\.silabs\slt\installs\archive\v6-base-v6.2.1-289\SimplicityStudio-6\studio.exe'
+  title_regex: '^Simplicity Studio.*'
+
+  start_timeout_seconds: 120
+  page_load_timeout_seconds: 60
+  board_search_timeout_seconds: 60

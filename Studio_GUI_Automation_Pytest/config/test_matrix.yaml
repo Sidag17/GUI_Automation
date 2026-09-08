@@ -1,0 +1,11 @@
+# Add one block per board/application/IDE combination.
+# Set enabled: false to keep a case in the file without running it.
+
+test_cases:
+  - name: brd2601b_blink_cmake
+    enabled: true
+    board: "2601B"
+    application: "AI/ML - SoC Blink EFR32"
+    target_ide: "CMake (GCC/IAR/LLVM)"
+    build_folder: "cmake_gcc"
+

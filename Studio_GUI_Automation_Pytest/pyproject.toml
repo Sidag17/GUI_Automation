@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "studio-gui-automation"
+version = "0.1.0"
+description = "Pytest-based Simplicity Studio GUI build automation"
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+    "pywinauto>=0.6.8",
+    "pywin32>=306",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-html>=4.1",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
