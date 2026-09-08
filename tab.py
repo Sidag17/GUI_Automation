@@ -1,176 +1,148 @@
+import time
+
 from pywinauto import Desktop
+from pywinauto.keyboard import send_keys
 
 
 desktop = Desktop(backend="uia")
 
-
-def print_element(element, prefix=""):
-    try:
-        print(
-            prefix,
-            "Name:", repr(element.element_info.name),
-            "| Type:", element.element_info.control_type,
-            "| AutomationID:", repr(element.element_info.automation_id),
-            "| Class:", repr(element.element_info.class_name),
-            "| Rect:", element.rectangle()
-        )
-    except Exception as error:
-        print(prefix, "ERROR:", error)
+print("Searching for Windows Terminal...")
 
 
-print("=" * 80)
-print("TOP LEVEL WINDOWS")
-print("=" * 80)
-
-windows = desktop.windows()
-
-project_window = None
+terminal_candidates = []
 
 
-# ============================================================
-# STEP 1
-# Find which top-level window contains Project Configuration
-# ============================================================
-
-for index, window in enumerate(windows):
+for window in desktop.windows():
 
     try:
+        class_name = (
+            window.element_info.class_name
+            or ""
+        ).strip()
+
+        if class_name != "CASCADIA_HOSTING_WINDOW_CLASS":
+            continue
+
+        if not window.is_visible():
+            continue
+
         print(
-            f"\nWINDOW {index}:",
+            "Windows Terminal found:",
             repr(window.window_text()),
-            "| Rect:",
-            window.rectangle()
+            "| Handle:",
+            window.handle
         )
 
-        descendants = window.descendants()
+        # --------------------------------------------
+        # Look for actual terminal input/display area.
+        #
+        # Our inspection showed:
+        #
+        # Type  = Text
+        # Class = TermControl
+        # --------------------------------------------
 
-        for element in descendants:
+        term_controls = []
+
+        for element in window.descendants():
 
             try:
-                name = (
-                    element.element_info.name or ""
-                ).strip()
-
-                if name.lower() == "project configuration":
-
-                    print("\n>>> PROJECT CONFIGURATION FOUND HERE <<<")
-                    print_element(element, "    ")
-
-                    project_window = window
-                    break
+                if (
+                    element.element_info.control_type == "Text"
+                    and
+                    element.element_info.class_name == "TermControl"
+                    and
+                    element.is_visible()
+                ):
+                    term_controls.append(element)
 
             except Exception:
                 pass
 
-        if project_window is not None:
-            break
+        if not term_controls:
+            print("  No visible TermControl found.")
+            continue
+
+        print(
+            f"  Found {len(term_controls)} TermControl(s)"
+        )
+
+        terminal_candidates.append(
+            (
+                window,
+                term_controls[0]
+            )
+        )
 
     except Exception:
         pass
 
 
-if project_window is None:
+if not terminal_candidates:
     raise RuntimeError(
-        "Project Configuration UI was not found."
+        "No usable Windows Terminal was found."
     )
 
 
-print("\n")
-print("=" * 80)
-print("PROJECT CONFIGURATION WINDOW")
-print("=" * 80)
+# ============================================================
+# Pick visible candidate
+# ============================================================
 
+terminal_window, terminal_area = terminal_candidates[0]
+
+
+print("\nSelected terminal:")
 print(
-    "Window:",
-    repr(project_window.window_text())
+    "Title:",
+    repr(terminal_window.window_text())
+)
+print(
+    "Handle:",
+    terminal_window.handle
+)
+print(
+    "TermControl:",
+    terminal_area.rectangle()
 )
 
 
 # ============================================================
-# STEP 2
-# Search for controls that we care about
+# Bring terminal to foreground
 # ============================================================
 
-targets = [
-    "Project Configuration",
-    "Project Name",
-    "Target IDE",
-    "VS Code (GCC)",
-    "FINISH",
-    "BACK",
-    "Use default location",
-    "Copy contents",
-]
+print("\nBringing terminal to foreground...")
 
+terminal_window.set_focus()
 
-for element in project_window.descendants():
-
-    try:
-        name = (
-            element.element_info.name or ""
-        ).strip()
-
-        if not name:
-            continue
-
-        for target in targets:
-
-            if target.lower() in name.lower():
-
-                print("\nFOUND:")
-                print_element(element, "    ")
-
-                try:
-                    parent = element.parent()
-
-                    print("    Parent:")
-                    print_element(parent, "        ")
-
-                except Exception:
-                    pass
-
-                break
-
-    except Exception:
-        pass
+time.sleep(1)
 
 
 # ============================================================
-# STEP 3
-# Print all useful controls
+# Click actual terminal content
 # ============================================================
 
-print("\n")
-print("=" * 80)
-print("INPUT / SELECTION CONTROLS")
-print("=" * 80)
+print("Focusing TermControl...")
+
+terminal_area.click_input()
+
+time.sleep(0.5)
 
 
-interesting_types = {
-    "ComboBox",
-    "Edit",
-    "Button",
-    "RadioButton",
-    "CheckBox",
-    "List",
-    "ListItem",
-}
+# ============================================================
+# TEST COMMAND
+#
+# Do NOT run CMake yet.
+# First verify that keyboard input works.
+# ============================================================
 
+print("Sending test command...")
 
-for element in project_window.descendants():
+send_keys(
+    "echo ROBOT_TERMINAL_TEST",
+    with_spaces=True,
+    pause=0.05
+)
 
-    try:
-        control_type = (
-            element.element_info.control_type
-        )
+send_keys("{ENTER}")
 
-        if control_type not in interesting_types:
-            continue
-
-        if not element.is_visible():
-            continue
-
-        print_element(element, "    ")
-
-    except Exception:
-        pass
+print("Test command sent.")

@@ -5,11 +5,12 @@ Library    ../library/StudioLibrary.py
 *** Variables ***
 ${BOARD}          2601B
 ${APPLICATION}    AI/ML - SoC Blink EFR32
-${TARGET_IDE}     VS Code (LLVM)
+${TARGET_IDE}     CMake (GCC/IAR/LLVM)
+${BUILD_FOLDER}   cmake_gcc
 
 
 *** Tasks ***
-Create Machine Learning Application
+Create And Build Application
     Open Studio
     Wait For Main Screen
     Maximize Studio
@@ -25,3 +26,6 @@ Create Machine Learning Application
 
     Select Target IDE    ${TARGET_IDE}
     Finish Project Creation
+
+    Open Project In Target IDE    ${TARGET_IDE}
+    Run CMake Workflow    ${BUILD_FOLDER}
