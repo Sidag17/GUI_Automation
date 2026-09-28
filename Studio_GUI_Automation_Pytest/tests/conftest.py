@@ -1,23 +1,42 @@
-import sys
-from pathlib import Path
-
 import pytest
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = PROJECT_ROOT / "src"
-
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-from studio_automation import StudioAutomation
+from studio_automation.automation import StudioAutomation
 
 
 @pytest.fixture(scope="session")
 def studio():
-    """One GUI automation session for the complete pytest run.
 
-    GUI automation is intentionally sequential; multiple tests must not
-    control the same Windows desktop in parallel.
-    """
-    return StudioAutomation()
+    print("")
+    print("=" * 70)
+    print("SIMPLICITY STUDIO TEST SESSION")
+    print("=" * 70)
+
+    automation = StudioAutomation()
+
+    # ========================================================
+    # Connect to existing Studio or open it once
+    # ========================================================
+
+    automation.ensure_studio_session()
+
+    yield automation
+
+    # ========================================================
+    # Final pytest session cleanup
+    # ========================================================
+
+    print("")
+    print("=" * 70)
+    print("PYTEST SESSION COMPLETE")
+    print("=" * 70)
+
+    try:
+
+        automation.close_cli_terminal()
+
+    except Exception as error:
+
+        print(
+            "Terminal cleanup warning:",
+            error
+        )

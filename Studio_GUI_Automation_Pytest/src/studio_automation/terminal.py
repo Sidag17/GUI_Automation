@@ -153,13 +153,12 @@ class TerminalActions:
             ".s37 binary file found in build/base."
         )
 
-        print(
-            "========================================"
-        )
+        print("========================================")
+        
+        self.close_cli_terminal()
 
         return True
     
-
     def _wait_for_cli_terminal(
         self,
         timeout=30
@@ -420,6 +419,91 @@ class TerminalActions:
         )
 
         time.sleep(0.5)
+
+    def close_cli_terminal(self):
+        """
+        Close the CLI tab opened by Simplicity Studio.
+
+        This method is safe to call even if no terminal
+        is currently open.
+        """
+
+        if self.cli_window_handle is None:
+            print("No CLI terminal to close.")
+            return
+
+        print("Closing CLI terminal...")
+
+        desktop = Desktop(
+            backend="uia"
+        )
+
+        try:
+
+            terminal_window = desktop.window(
+                handle=self.cli_window_handle
+            )
+
+            if not terminal_window.exists():
+                print(
+                    "CLI terminal is already closed."
+                )
+                self.cli_window_handle = None
+                return
+
+            terminal_window.set_focus()
+
+            time.sleep(0.3)
+
+            # --------------------------------------------------------
+            # Prefer closing ONLY the active Windows Terminal tab.
+            #
+            # Studio opens cmd.exe in a Windows Terminal tab.
+            # This avoids closing unrelated terminal tabs/windows.
+            # --------------------------------------------------------
+
+            close_tab_button = terminal_window.child_window(
+                title="Close Tab",
+                control_type="Button",
+                auto_id="CloseButton"
+            )
+
+            if close_tab_button.exists(
+                timeout=2
+            ):
+
+                close_tab_button.click_input()
+
+                print(
+                    "CLI terminal tab closed."
+                )
+
+            else:
+
+                # Fallback only if Close Tab cannot be found.
+                print(
+                    "Close Tab button not found. "
+                    "Closing terminal window."
+                )
+
+                terminal_window.close()
+
+        except Exception as error:
+
+            print(
+                "Warning: unable to close CLI terminal:",
+                error
+            )
+
+        finally:
+
+            # Very important.
+            # The next application must discover its own terminal.
+            self.cli_window_handle = None
+
+            print(
+                "CLI terminal state reset."
+            )
 
     def _wait_for_terminal_title(
         self,

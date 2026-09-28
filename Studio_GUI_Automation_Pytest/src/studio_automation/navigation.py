@@ -149,6 +149,101 @@ class NavigationMixin:
             "Devices search box was not found."
         )
 
+    def _activate_home_tab(
+        self,
+        timeout=20
+    ):
+
+        self._require_studio()
+
+        print(
+            "Ensuring Studio Home tab is active..."
+        )
+
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+
+            try:
+
+                tabs = self._get_top_tabs()
+
+                for tab in tabs:
+
+                    try:
+
+                        name = (
+                            tab.element_info.name
+                            or ""
+                        ).strip()
+
+                        if name.lower() != "home":
+                            continue
+
+                        if not tab.is_visible():
+                            continue
+
+                        print(
+                            "Home tab found."
+                        )
+
+                        # Bring Studio to foreground
+                        self.studio.wrapper_object().set_focus()
+
+                        time.sleep(0.2)
+
+                        # Click Home explicitly.
+                        tab.click_input()
+
+                        print(
+                            "Home tab clicked."
+                        )
+
+                        # Previous page controls are stale now.
+                        self.search_box = None
+
+                        # ----------------------------------------
+                        # Verify Home really became active by
+                        # waiting for DEVICES.
+                        # ----------------------------------------
+
+                        devices = self.studio.child_window(
+                            title="DEVICES",
+                            control_type="Hyperlink",
+                        )
+
+                        if devices.exists(
+                            timeout=3
+                        ):
+
+                            print(
+                                "Home tab is active."
+                            )
+
+                            return
+
+                        print(
+                            "Home clicked but DEVICES is "
+                            "not ready yet..."
+                        )
+
+                    except Exception:
+                        pass
+
+            except Exception as error:
+
+                print(
+                    "Unable to activate Home:",
+                    error
+                )
+
+            time.sleep(0.5)
+
+        raise RuntimeError(
+            "Unable to activate Simplicity Studio "
+            "Home tab."
+        )
+
     def _wait_for_board_result(self, board_name):
         print(
             f"Waiting for board result containing '{board_name}'..."

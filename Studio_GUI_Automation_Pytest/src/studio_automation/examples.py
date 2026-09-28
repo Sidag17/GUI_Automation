@@ -1,10 +1,277 @@
+import re
 import time
-
 
 from .configuration import PAGE_LOAD_TIMEOUT
 
 
 class ExampleActions:
+    
+    def count_machine_learning_applications(
+        self,
+        timeout=30
+    ):
+        """
+        Search for 'machine learning' on the Example Projects
+        page and read Studio's 'X Items Found' value.
+
+        Returns:
+            int: Number reported by Simplicity Studio.
+        """
+
+        self._require_studio()
+
+        print("")
+        print(
+            "Counting Machine Learning applications..."
+        )
+
+        # ========================================================
+        # STEP 1
+        # Make sure Example Projects page is ready
+        # ========================================================
+
+        self._wait_for_example_filter_page()
+
+        filter_box = self.studio.child_window(
+            title="Filter on keywords",
+            control_type="ComboBox",
+        )
+
+        filter_box.wait(
+            "exists visible enabled",
+            timeout=PAGE_LOAD_TIMEOUT,
+            retry_interval=0.5,
+        )
+
+        box = filter_box.wrapper_object()
+
+        self.studio.wrapper_object().set_focus()
+
+        # ========================================================
+        # STEP 2
+        # Completely clear existing keyword search
+        # ========================================================
+
+        print(
+            "Clearing previous keyword filter..."
+        )
+
+        box.click_input()
+
+        time.sleep(0.3)
+
+        box.type_keys(
+            "^a{BACKSPACE}",
+            set_foreground=True,
+        )
+
+        time.sleep(0.5)
+
+        # ========================================================
+        # STEP 3
+        # Search Machine Learning
+        # ========================================================
+
+        search_text = "machine learning"
+
+        print(
+            f"Searching filter: {search_text}"
+        )
+
+        box.type_keys(
+            search_text,
+            with_spaces=True,
+            set_foreground=True,
+        )
+
+        time.sleep(0.3)
+
+        box.type_keys(
+            "{ENTER}",
+            set_foreground=True,
+        )
+
+        # Give Studio time to start updating results.
+        time.sleep(1)
+
+        # ========================================================
+        # STEP 4
+        # Read "X Items Found"
+        # ========================================================
+
+        pattern = re.compile(
+            r"^\s*(\d+)\s+items?\s+found\s*$",
+            re.IGNORECASE,
+        )
+
+        print(
+            "Waiting for Machine Learning item count..."
+        )
+
+        start_time = time.time()
+
+        last_count = None
+        stable_reads = 0
+
+        final_count = None
+        final_text = None
+
+        while (
+            time.time() - start_time
+            < timeout
+        ):
+
+            window = (
+                self.studio.wrapper_object()
+            )
+
+            current_count = None
+            current_text = None
+
+            for element in window.descendants():
+
+                try:
+
+                    name = (
+                        element.element_info.name
+                        or ""
+                    ).strip()
+
+                    if not name:
+                        continue
+
+                    match = pattern.match(name)
+
+                    if not match:
+                        continue
+
+                    if not element.is_visible():
+                        continue
+
+                    rect = element.rectangle()
+
+                    if (
+                        rect.width() <= 0
+                        or rect.height() <= 0
+                    ):
+                        continue
+
+                    current_count = int(
+                        match.group(1)
+                    )
+
+                    current_text = name
+
+                    break
+
+                except Exception:
+                    pass
+
+            # ----------------------------------------------------
+            # Chromium can briefly show an intermediate result
+            # count while filtering.
+            #
+            # Do not immediately accept the first number.
+            # Require the same value several times.
+            # ----------------------------------------------------
+
+            if current_count is not None:
+
+                print(
+                    "Current item count:",
+                    current_count,
+                )
+
+                if current_count == last_count:
+
+                    stable_reads += 1
+
+                else:
+
+                    last_count = current_count
+                    stable_reads = 1
+
+                if stable_reads >= 3:
+
+                    final_count = current_count
+                    final_text = current_text
+
+                    break
+
+            else:
+
+                print(
+                    "Item count not ready yet..."
+                )
+
+            time.sleep(0.5)
+
+        if final_count is None:
+
+            raise RuntimeError(
+                "Could not determine the number of "
+                "Machine Learning applications."
+            )
+
+        print("")
+        print(
+            "Machine Learning count detected:"
+        )
+
+        print(
+            "Studio text:",
+            repr(final_text)
+        )
+
+        print(
+            "Machine Learning applications:",
+            final_count
+        )
+
+        # ========================================================
+        # STEP 5
+        # Clear "machine learning" before actual app search
+        # ========================================================
+
+        print(
+            "Clearing Machine Learning keyword filter..."
+        )
+
+        # Re-resolve ComboBox because Chromium may have
+        # rebuilt the control while updating results.
+
+        filter_box = self.studio.child_window(
+            title="Filter on keywords",
+            control_type="ComboBox",
+        )
+
+        filter_box.wait(
+            "exists visible enabled",
+            timeout=PAGE_LOAD_TIMEOUT,
+            retry_interval=0.5,
+        )
+
+        box = filter_box.wrapper_object()
+
+        self.studio.wrapper_object().set_focus()
+
+        box.click_input()
+
+        time.sleep(0.3)
+
+        box.type_keys(
+            "^a{BACKSPACE}",
+            set_foreground=True,
+        )
+
+        time.sleep(0.5)
+
+        print(
+            "Machine Learning filter cleared."
+        )
+
+        return final_count
+    
     def open_example_projects_and_demos(self):
         self._require_studio()
 
