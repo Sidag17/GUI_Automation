@@ -23,7 +23,7 @@ TEST_CASES = load_test_cases()
         for case in TEST_CASES
     ],
 )
-def test_create_build_and_verify_s37(studio,case):
+def test_create_build_and_verify_s37(studio, case):
     print("")
     print("=" * 70)
     print(
@@ -45,21 +45,6 @@ def test_create_build_and_verify_s37(studio,case):
 
     # ========================================================
     # STEP 1
-    # Prepare Studio for this application
-    # ========================================================
-
-    print(
-        "Preparing Studio for current test case..."
-    )
-
-    studio.close_previous_tabs()
-
-    print(
-        "Studio workspace cleaned."
-    )
-
-    # ========================================================
-    # STEP 2
     # Open Devices page
     # ========================================================
 
@@ -71,14 +56,14 @@ def test_create_build_and_verify_s37(studio,case):
     studio.open_devices()
 
     # ========================================================
-    # STEP 3
+    # STEP 2
     # Click Add Device(s)
     # ========================================================
 
     studio.open_add_device_search()
 
     # ========================================================
-    # STEP 4
+    # STEP 3
     # Search board
     # ========================================================
 
@@ -87,7 +72,7 @@ def test_create_build_and_verify_s37(studio,case):
     )
 
     # ========================================================
-    # STEP 5
+    # STEP 4
     # Select board
     # ========================================================
 
@@ -101,37 +86,35 @@ def test_create_build_and_verify_s37(studio,case):
     )
 
     # ========================================================
-    # STEP 6
+    # STEP 5
     # Open Example Projects & Demos
     # ========================================================
 
     studio.open_example_projects_and_demos()
 
     # ========================================================
-    # STEP 7
+    # STEP 6
     # Count Machine Learning applications
+    # (filter search: "machine learning" -> read Items Found)
     # ========================================================
 
-    ml_application_count = (
-        studio.count_machine_learning_applications()
-    )
+    ml_application_count = None
+    if case.get("count_ml_apps", True):
+        ml_application_count = (
+            studio.count_machine_learning_applications()
+        )
 
-    print("")
-    print("-" * 70)
-
-    print(
-        f"Board: {case['board']}"
-    )
-
-    print(
-        "Machine Learning applications supported:",
-        ml_application_count
-    )
-
-    print("-" * 70)
+        print("")
+        print("-" * 70)
+        print(f"Board: {case['board']}")
+        print(
+            "Machine Learning applications supported:",
+            ml_application_count
+        )
+        print("-" * 70)
 
     # ========================================================
-    # STEP 8
+    # STEP 7
     # Search actual application from YAML
     # ========================================================
 
@@ -140,7 +123,7 @@ def test_create_build_and_verify_s37(studio,case):
     )
 
     # ========================================================
-    # STEP 9
+    # STEP 8
     # Create Production application
     # ========================================================
 
@@ -149,7 +132,7 @@ def test_create_build_and_verify_s37(studio,case):
     )
 
     # ========================================================
-    # STEP 10
+    # STEP 9
     # Select Target IDE
     # ========================================================
 
@@ -158,14 +141,14 @@ def test_create_build_and_verify_s37(studio,case):
     )
 
     # ========================================================
-    # STEP 11
+    # STEP 10
     # Finish project creation
     # ========================================================
 
     studio.finish_project_creation()
 
     # ========================================================
-    # STEP 12
+    # STEP 11
     # Open project using configured IDE
     # ========================================================
 
@@ -174,26 +157,7 @@ def test_create_build_and_verify_s37(studio,case):
     )
 
     # ========================================================
-    # STEP 13
-    # Current automation supports CMake build verification
-    # ========================================================
-
-    if not (
-        case["target_ide"]
-        .strip()
-        .lower()
-        .startswith("cmake")
-    ):
-
-        pytest.fail(
-            "Current build verification supports "
-            "CMake targets only. "
-            f"Configured target: "
-            f"{case['target_ide']}"
-        )
-
-    # ========================================================
-    # STEP 14
+    # STEP 12
     # Build application and verify .s37
     # ========================================================
 
@@ -235,10 +199,11 @@ def test_create_build_and_verify_s37(studio,case):
             f"{case['application']}"
         )
 
-        print(
-            f"Machine Learning applications supported: "
-            f"{ml_application_count}"
-        )
+        if ml_application_count is not None:
+            print(
+                f"Machine Learning applications supported: "
+                f"{ml_application_count}"
+            )
 
         print(
             ".s37 binary verified successfully."

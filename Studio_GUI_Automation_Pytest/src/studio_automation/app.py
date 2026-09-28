@@ -3,7 +3,12 @@ import time
 
 from pywinauto.keyboard import send_keys
 
-from .configuration import STUDIO_EXE, STUDIO_START_TIMEOUT, STUDIO_TITLE_REGEX
+from .configuration import (
+    STUDIO_START_TIMEOUT,
+    STUDIO_TITLE_REGEX,
+    require_studio_exe,
+)
+from .uia_helpers import UIA_TRANSIENT_ERRORS, is_usable
 
 
 class StudioAppActions:
@@ -37,21 +42,13 @@ class StudioAppActions:
 
             try:
 
-                if not wrapper.is_visible():
-                    continue
-
-                rect = wrapper.rectangle()
-
-                if (
-                    rect.width() <= 0
-                    or rect.height() <= 0
-                ):
+                if not is_usable(wrapper):
                     continue
 
                 usable_windows.append(wrapper)
 
-            except Exception:
-                pass
+            except UIA_TRANSIENT_ERRORS:
+                continue
 
         if usable_windows:
 
@@ -80,7 +77,7 @@ class StudioAppActions:
 
             try:
                 self.studio.wrapper_object().set_focus()
-            except Exception:
+            except UIA_TRANSIENT_ERRORS:
                 pass
 
             return False
@@ -90,12 +87,15 @@ class StudioAppActions:
         # Studio is NOT running
         # ========================================================
 
+        studio_exe = require_studio_exe()
+
         print(
             "Simplicity Studio is not open. "
             "Launching Studio..."
         )
+        print("Executable:", studio_exe)
 
-        subprocess.Popen(STUDIO_EXE)
+        subprocess.Popen(studio_exe)
 
         return True
 
@@ -150,25 +150,20 @@ class StudioAppActions:
 
         launched_now = self.open_studio()
 
-        # ========================================================
-        # Only a freshly launched Studio needs the initial
-        # DEVICES/Home-screen wait.
-        # ========================================================
-
+        # Always normalize to a usable main screen, whether Studio
+        # was just launched or attached mid-session / mid-dialog.
         if launched_now:
-
             print(
                 "Studio was launched by automation. "
                 "Waiting for initial main screen..."
             )
-
-            self.wait_for_main_screen()
-
         else:
-
             print(
-                "Existing Studio session attached successfully."
+                "Existing Studio session attached. "
+                "Normalizing to main screen..."
             )
+
+        self.wait_for_main_screen()
 
         # ========================================================
         # Keep Studio maximized
@@ -182,7 +177,7 @@ class StudioAppActions:
 
             window.maximize()
 
-        except Exception as error:
+        except UIA_TRANSIENT_ERRORS as error:
 
             print(
                 "Could not maximize Studio:",
@@ -216,8 +211,8 @@ class StudioAppActions:
                             repr(wrapper.window_text()),
                         )
                         return
-                except Exception:
-                    pass
+                except UIA_TRANSIENT_ERRORS:
+                    continue
 
             print("Studio is still loading...")
             time.sleep(2)
@@ -234,7 +229,7 @@ class StudioAppActions:
 
         try:
             window.maximize()
-        except Exception:
+        except UIA_TRANSIENT_ERRORS:
             pass
 
         print("Main Studio window maximized.")
@@ -309,8 +304,8 @@ class StudioAppActions:
                         tab
                     )
 
-                except Exception:
-                    pass
+                except UIA_TRANSIENT_ERRORS:
+                    continue
 
             # --------------------------------------------------------
             # Nothing else to close
@@ -342,7 +337,8 @@ class StudioAppActions:
 
             tab.click_input()
 
-            time.sleep(0.5)
+            # Wait until the tab is focused enough that Ctrl+W applies.
+            time.sleep(0.2)
 
             send_keys("^w")
 

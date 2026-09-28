@@ -1,6 +1,13 @@
 import time
 
 from .configuration import BOARD_SEARCH_TIMEOUT, PAGE_LOAD_TIMEOUT
+from .uia_helpers import (
+    UIA_TRANSIENT_ERRORS,
+    board_match_score,
+    element_name,
+    element_type,
+    is_usable,
+)
 
 
 class NavigationMixin:
@@ -10,126 +17,144 @@ class NavigationMixin:
                 "Studio is not ready. Run 'Wait For Main Screen' first."
             )
 
-    def _get_top_tabs(self):
-        window = self.studio.wrapper_object()
-
-        text_elements = window.descendants(
-            control_type="Text"
-        )
-
-        home_tab = None
-
-        for element in text_elements:
+    def _find_home_tab_text(self, window):
+        """Locate the Home tab Text control under a Group parent."""
+        for element in window.descendants(control_type="Text"):
             try:
-                name = (element.element_info.name or "").strip()
+                if element_name(element) != "Home":
+                    continue
+                if not element.is_visible():
+                    continue
+                parent = element.parent()
+                if element_type(parent) != "Group":
+                    continue
+                return element
+            except UIA_TRANSIENT_ERRORS:
+                continue
+        return None
 
-                if (
-                    name == "Home"
-                    and element.is_visible()
-                    and element.parent().element_info.control_type
-                    == "Group"
-                ):
-                    home_tab = element
-                    break
-            except Exception:
-                pass
+    def _tab_label_from_group(self, group):
+        """Return the primary Text label inside a tab Group, if any."""
+        try:
+            # Prefer direct children first (stable, shallow).
+            for child in group.children():
+                try:
+                    if element_type(child) != "Text":
+                        continue
+                    name = element_name(child)
+                    if name and is_usable(child):
+                        return child
+                except UIA_TRANSIENT_ERRORS:
+                    continue
+
+            for text in group.descendants(control_type="Text"):
+                try:
+                    name = element_name(text)
+                    if name and is_usable(text):
+                        return text
+                except UIA_TRANSIENT_ERRORS:
+                    continue
+        except UIA_TRANSIENT_ERRORS:
+            return None
+        return None
+
+    def _get_top_tabs(self):
+        """Discover top document tabs via UIA tree structure.
+
+        Tabs are sibling Groups under the same parent as the Home tab
+        Group. This is screen-independent (no pixel Y banding / DPI
+        assumptions) and avoids absolute coordinates for interaction.
+        """
+        window = self.studio.wrapper_object()
+        home_tab = self._find_home_tab_text(window)
 
         if home_tab is None:
             return []
 
-        home_rect = home_tab.rectangle()
-        home_center_y = (
-            home_rect.top + home_rect.bottom
-        ) // 2
+        try:
+            home_group = home_tab.parent()
+            tab_row = home_group.parent()
+        except UIA_TRANSIENT_ERRORS:
+            return [home_tab]
 
         tabs = []
+        seen_handles = set()
 
-        for element in text_elements:
+        try:
+            siblings = tab_row.children()
+        except UIA_TRANSIENT_ERRORS:
+            return [home_tab]
+
+        for sibling in siblings:
             try:
-                name = (element.element_info.name or "").strip()
-
-                if not name or not element.is_visible():
+                if element_type(sibling) != "Group":
                     continue
 
-                if (
-                    element.parent().element_info.control_type
-                    != "Group"
-                ):
+                label = self._tab_label_from_group(sibling)
+                if label is None:
                     continue
 
-                rect = element.rectangle()
+                handle = getattr(label, "handle", None)
+                if handle is not None:
+                    if handle in seen_handles:
+                        continue
+                    seen_handles.add(handle)
 
-                if rect.width() <= 0 or rect.height() <= 0:
-                    continue
+                tabs.append(label)
+            except UIA_TRANSIENT_ERRORS:
+                continue
 
-                center_y = (rect.top + rect.bottom) // 2
+        if not tabs:
+            return [home_tab]
 
-                if abs(center_y - home_center_y) <= 12:
-                    tabs.append(element)
-
-            except Exception:
-                pass
-
-        tabs.sort(key=lambda item: item.rectangle().left)
+        # Relative left-to-right order among already-found siblings only.
+        # Used for close order — never for click targeting by pixels.
+        try:
+            tabs.sort(key=lambda item: item.rectangle().left)
+        except UIA_TRANSIENT_ERRORS:
+            pass
 
         return tabs
 
     def _tab_exists(self, tab_name):
         for tab in self._get_top_tabs():
             try:
-                name = (tab.element_info.name or "").strip()
-
-                if name == tab_name:
+                if element_name(tab) == tab_name:
                     return True
-            except Exception:
-                pass
-
+            except UIA_TRANSIENT_ERRORS:
+                continue
         return False
 
     def _wait_for_tab_to_close(self, tab_name, timeout=10):
         start_time = time.time()
-
         while time.time() - start_time < timeout:
             if not self._tab_exists(tab_name):
                 return True
-
             time.sleep(0.5)
-
         return False
 
     def _wait_for_search_box(self):
         print("Waiting for Devices search box...")
-
         start_time = time.time()
 
         while time.time() - start_time < PAGE_LOAD_TIMEOUT:
             try:
                 window = self.studio.wrapper_object()
-
-                edits = window.descendants(
-                    control_type="Edit"
-                )
-
+                edits = window.descendants(control_type="Edit")
                 visible_edits = []
 
                 for edit in edits:
                     try:
-                        if not (
-                            edit.is_visible()
-                            and edit.is_enabled()
-                        ):
+                        if not (edit.is_visible() and edit.is_enabled()):
                             continue
 
                         visible_edits.append(edit)
-
-                        name = edit.element_info.name or ""
-
+                        name = element_name(edit)
                         if "search" in name.lower():
                             print("Devices search box found.")
                             return edit
-
-                    except Exception:
-                        pass
+                    except UIA_TRANSIENT_ERRORS:
+                        continue
 
                 # Current Devices page normally has one usable Edit.
                 if len(visible_edits) == 1:
@@ -139,183 +164,114 @@ class NavigationMixin:
                     )
                     return visible_edits[0]
 
-            except Exception:
+            except UIA_TRANSIENT_ERRORS:
                 pass
 
             print("Devices page is still loading...")
             time.sleep(1)
 
-        raise RuntimeError(
-            "Devices search box was not found."
-        )
+        raise RuntimeError("Devices search box was not found.")
 
-    def _activate_home_tab(
-        self,
-        timeout=20
-    ):
-
+    def _activate_home_tab(self, timeout=20):
         self._require_studio()
-
-        print(
-            "Ensuring Studio Home tab is active..."
-        )
-
+        print("Ensuring Studio Home tab is active...")
         start_time = time.time()
 
         while time.time() - start_time < timeout:
-
             try:
-
-                tabs = self._get_top_tabs()
-
-                for tab in tabs:
-
+                for tab in self._get_top_tabs():
                     try:
-
-                        name = (
-                            tab.element_info.name
-                            or ""
-                        ).strip()
-
-                        if name.lower() != "home":
+                        if element_name(tab).lower() != "home":
                             continue
-
                         if not tab.is_visible():
                             continue
 
-                        print(
-                            "Home tab found."
-                        )
-
-                        # Bring Studio to foreground
+                        print("Home tab found.")
                         self.studio.wrapper_object().set_focus()
-
-                        time.sleep(0.2)
-
-                        # Click Home explicitly.
                         tab.click_input()
-
-                        print(
-                            "Home tab clicked."
-                        )
-
-                        # Previous page controls are stale now.
+                        print("Home tab clicked.")
                         self.search_box = None
-
-                        # ----------------------------------------
-                        # Verify Home really became active by
-                        # waiting for DEVICES.
-                        # ----------------------------------------
 
                         devices = self.studio.child_window(
                             title="DEVICES",
                             control_type="Hyperlink",
                         )
-
-                        if devices.exists(
-                            timeout=3
-                        ):
-
-                            print(
-                                "Home tab is active."
-                            )
-
+                        if devices.exists(timeout=3):
+                            print("Home tab is active.")
                             return
 
                         print(
                             "Home clicked but DEVICES is "
                             "not ready yet..."
                         )
-
-                    except Exception:
-                        pass
-
-            except Exception as error:
-
-                print(
-                    "Unable to activate Home:",
-                    error
-                )
+                    except UIA_TRANSIENT_ERRORS:
+                        continue
+            except UIA_TRANSIENT_ERRORS as error:
+                print("Unable to activate Home:", error)
 
             time.sleep(0.5)
 
         raise RuntimeError(
-            "Unable to activate Simplicity Studio "
-            "Home tab."
+            "Unable to activate Simplicity Studio Home tab."
         )
 
     def _wait_for_board_result(self, board_name):
         print(
             f"Waiting for board result containing '{board_name}'..."
         )
-
         start_time = time.time()
 
         while time.time() - start_time < BOARD_SEARCH_TIMEOUT:
             try:
                 window = self.studio.wrapper_object()
-                candidates = []
+                ranked = []
 
                 for element in window.descendants():
                     try:
-                        name = (
-                            element.element_info.name or ""
-                        ).strip()
+                        name = element_name(element)
+                        control_type = element_type(element)
+                        score = board_match_score(name, board_name)
 
-                        control_type = (
-                            element.element_info.control_type
-                        )
-
-                        if not name:
+                        if score is None:
                             continue
-
-                        if (
-                            str(board_name).lower()
-                            not in name.lower()
-                        ):
-                            continue
-
                         if not element.is_visible():
                             continue
-
                         if control_type == "Edit":
                             continue
 
-                        candidates.append(element)
-
-                    except Exception:
-                        pass
-
-                if candidates:
-                    priority = {
-                        "TreeItem": 0,
-                        "Hyperlink": 1,
-                        "Button": 2,
-                        "ListItem": 3,
-                        "DataItem": 4,
-                        "Custom": 5,
-                        "Text": 6,
-                    }
-
-                    candidates.sort(
-                        key=lambda item: priority.get(
-                            item.element_info.control_type,
-                            100,
+                        type_priority = {
+                            "TreeItem": 0,
+                            "Hyperlink": 1,
+                            "Button": 2,
+                            "ListItem": 3,
+                            "DataItem": 4,
+                            "Custom": 5,
+                            "Text": 6,
+                        }
+                        ranked.append(
+                            (
+                                score,
+                                type_priority.get(control_type, 100),
+                                element,
+                            )
                         )
-                    )
+                    except UIA_TRANSIENT_ERRORS:
+                        continue
 
-                    result = candidates[0]
-
+                if ranked:
+                    ranked.sort(key=lambda item: (item[0], item[1]))
+                    result = ranked[0][2]
                     print(
                         "Selected board result:",
-                        repr(result.element_info.name),
+                        repr(element_name(result)),
                         "| Type:",
-                        result.element_info.control_type,
+                        element_type(result),
+                        "| Match score:",
+                        ranked[0][0],
                     )
-
                     return result
 
-            except Exception:
+            except UIA_TRANSIENT_ERRORS:
                 pass
 
             print("Board result not ready yet...")
@@ -324,4 +280,26 @@ class NavigationMixin:
         raise RuntimeError(
             f"No result found for board '{board_name}'."
         )
-        
+
+    def prepare_for_test_case(self):
+        """Normalize Studio UI before each matrix case.
+
+        Re-attaches if needed, activates Home, and closes leftover
+        project/board tabs so a prior failure cannot poison the next case.
+        """
+        self._require_studio()
+        print("Preparing Studio workspace for next test case...")
+
+        try:
+            self.studio.wrapper_object().set_focus()
+        except UIA_TRANSIENT_ERRORS as error:
+            print("Could not focus Studio:", error)
+
+        try:
+            self._activate_home_tab(timeout=20)
+        except RuntimeError as error:
+            print("Home activation warning:", error)
+
+        self.close_previous_tabs()
+        self.search_box = None
+        print("Studio workspace ready.")

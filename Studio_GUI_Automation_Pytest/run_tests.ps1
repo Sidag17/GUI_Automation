@@ -82,9 +82,20 @@ Write-Host ""
 Write-Host "Starting pytest..."
 Write-Host ""
 
-python -m pytest
+$HtmlReport = Join-Path $ReportsPath "report.html"
+$JunitReport = Join-Path $ReportsPath "junit.xml"
+
+python -m pytest `
+    --html="$HtmlReport" `
+    --self-contained-html `
+    --junitxml="$JunitReport"
 
 $TestExitCode = $LASTEXITCODE
+
+Write-Host ""
+Write-Host "Reports:"
+Write-Host "  HTML : $HtmlReport"
+Write-Host "  JUnit: $JunitReport"
 
 
 # ============================================================

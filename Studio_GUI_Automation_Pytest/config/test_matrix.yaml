@@ -1,74 +1,87 @@
 # Add one block per board/application/IDE combination.
 # Set enabled: false to keep a case in the file without running it.
+#
+# Tip: keep only a smoke case enabled for day-to-day runs.
+# Enable the full matrix when you need broader coverage.
 
 
 test_cases:
-  - name: brd2601b_anomaly_detection_cmake
-    enabled: true
-    board: "2601B"
-    application: "AI/ML - SoC Anomaly Detection EFR32"
-    target_ide: "CMake (GCC/IAR/LLVM)"
-    build_folder: "cmake_gcc"
-
-  - name: brd2601b_audio_classifier_cmake
-    enabled: true
-    board: "2601B"
-    application: "AI/ML - SoC Audio Classifier EFR32"
-    target_ide: "CMake (GCC/IAR/LLVM)"
-    build_folder: "cmake_gcc"
-
   - name: brd2601b_blink_cmake
     enabled: true
     board: "2601B"
     application: "AI/ML - SoC Blink EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: true
+
+  - name: brd2601b_anomaly_detection_cmake
+    enabled: false
+    board: "2601B"
+    application: "AI/ML - SoC Anomaly Detection EFR32"
+    target_ide: "CMake (GCC/IAR/LLVM)"
+    build_folder: "cmake_gcc"
+    count_ml_apps: false
+
+  - name: brd2601b_audio_classifier_cmake
+    enabled: false
+    board: "2601B"
+    application: "AI/ML - SoC Audio Classifier EFR32"
+    target_ide: "CMake (GCC/IAR/LLVM)"
+    build_folder: "cmake_gcc"
+    count_ml_apps: false
 
   - name: brd2601b_data_capture_cmake
-    enabled: true
+    enabled: false
     board: "2601B"
     application: "AI/ML - SoC Data Capture EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: false
 
   - name: brd2601b_image_classifier_cmake
-    enabled: true
+    enabled: false
     board: "2601B"
     application: "AI/ML - SoC Image Classifier EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: false
 
   - name: brd2601b_magic_wand_cmake
-    enabled: true
+    enabled: false
     board: "2601B"
     application: "AI/ML - SoC Magic Wand EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: false
 
   - name: brd2601b_model_profiler_cmake
-    enabled: true
+    enabled: false
     board: "2601B"
     application: "AI/ML - SoC Model Profiler EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: false
 
   - name: brd2601b_profiler_firmware_cmake
-    enabled: true
+    enabled: false
     board: "2601B"
     application: "AI/ML - SoC Profiler Firmware EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: false
 
   - name: brd2601b_voice_control_light_cmake
-    enabled: true
+    enabled: false
     board: "2601B"
     application: "AI/ML - SoC Voice Control Light EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: false
 
   - name: brd2601b_zigbee_switch_with_voice_cmake
-    enabled: true
+    enabled: false
     board: "2601B"
     application: "AI/ML - Zigbee SoC Z3 Switch With Voice EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: false

@@ -16,6 +16,33 @@ REQUIRED_FIELDS = (
     "build_folder",
 )
 
+# Build verification currently supports CMake workflows only.
+SUPPORTED_BUILD_IDE_PREFIXES = ("cmake",)
+
+
+def _normalize_ide(value: str) -> str:
+    return str(value or "").strip().lower()
+
+
+def validate_case(case, index):
+    missing = [field for field in REQUIRED_FIELDS if not case.get(field)]
+    if missing:
+        raise ValueError(
+            f"Test case #{index} ({case.get('name', '<unnamed>')}) "
+            f"is missing required field(s): {', '.join(missing)}"
+        )
+
+    ide = _normalize_ide(case["target_ide"])
+    if not any(ide.startswith(prefix) for prefix in SUPPORTED_BUILD_IDE_PREFIXES):
+        raise ValueError(
+            f"Test case #{index} ({case['name']}): "
+            f"target_ide '{case['target_ide']}' is not supported for "
+            f"build verification. Use a CMake target "
+            f"(e.g. 'CMake (GCC/IAR/LLVM)')."
+        )
+
+    return case
+
 
 def load_test_cases(matrix_file=None):
     path = Path(matrix_file) if matrix_file else DEFAULT_MATRIX_FILE
@@ -30,14 +57,7 @@ def load_test_cases(matrix_file=None):
         if not case.get("enabled", True):
             continue
 
-        missing = [field for field in REQUIRED_FIELDS if not case.get(field)]
-        if missing:
-            raise ValueError(
-                f"Test case #{index} is missing required field(s): "
-                + ", ".join(missing)
-            )
-
-        enabled_cases.append(case)
+        enabled_cases.append(validate_case(case, index))
 
     if not enabled_cases:
         raise ValueError(

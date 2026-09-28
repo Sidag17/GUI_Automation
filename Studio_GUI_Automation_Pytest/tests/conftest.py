@@ -40,3 +40,19 @@ def studio():
             "Terminal cleanup warning:",
             error
         )
+
+
+@pytest.fixture(autouse=True)
+def recover_studio_between_cases(request):
+    """Normalize Studio UI before every GUI test case.
+
+    Keeps the shared session-scoped Studio process, but clears leftover
+    tabs / Home state so a failure does not poison the next case.
+    """
+    if request.node.get_closest_marker("gui") is None:
+        yield
+        return
+
+    studio = request.getfixturevalue("studio")
+    studio.prepare_for_test_case()
+    yield

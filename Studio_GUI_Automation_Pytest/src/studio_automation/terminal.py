@@ -229,18 +229,19 @@ class TerminalActions:
                     if terminal_area is None:
                         continue
 
-                    # --------------------------------------------
-                    # Prefer the terminal that became foreground
-                    # after clicking "Open in CLI CMake".
-                    # --------------------------------------------
-
+                    # Prefer title / process cues over foreground
+                    # focus — other apps can steal foreground.
                     score = 0
+                    title_l = title.lower()
 
-                    if window.handle == foreground_handle:
-                        score += 100
-
-                    if "cmd.exe" in title.lower():
+                    if "cmd.exe" in title_l:
+                        score += 40
+                    if "cmake" in title_l:
+                        score += 30
+                    if "simplicity" in title_l:
                         score += 20
+                    if window.handle == foreground_handle:
+                        score += 15
 
                     rect = window.rectangle()
 

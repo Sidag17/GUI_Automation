@@ -22,13 +22,55 @@ def _load_settings():
 
 _SETTINGS = _load_settings()
 
-STUDIO_EXE = os.getenv(
-    "SIMPLICITY_STUDIO_EXE",
-    _SETTINGS.get(
-        "executable",
-        r"C:\Users\siagrawa\.silabs\slt\installs\archive\v6-base-v6.2.1-289\SimplicityStudio-6\studio.exe",
-    ),
-)
+
+def _discover_studio_exe() -> str:
+    """Find the newest studio.exe under the local SLT installs tree."""
+    roots = [
+        Path.home() / ".silabs" / "slt" / "installs",
+        Path(r"C:\SiliconLabs"),
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+        / "SiliconLabs",
+        Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+        / "SiliconLabs",
+    ]
+
+    matches = []
+    for root in roots:
+        if not root.exists():
+            continue
+        try:
+            matches.extend(root.rglob("studio.exe"))
+        except OSError:
+            continue
+
+    existing = [path for path in matches if path.is_file()]
+    if not existing:
+        return ""
+
+    # Prefer the most recently modified install (handles SLT version bumps).
+    existing.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return str(existing[0])
+
+
+def _resolve_studio_exe() -> str:
+    env_value = os.getenv("SIMPLICITY_STUDIO_EXE", "").strip()
+    if env_value and Path(env_value).is_file():
+        return env_value
+
+    yaml_value = str(_SETTINGS.get("executable") or "").strip()
+    if yaml_value and Path(yaml_value).is_file():
+        return yaml_value
+
+    discovered = _discover_studio_exe()
+    if discovered:
+        return discovered
+
+    # Keep an explicit configured path for clearer error messages even when
+    # the file is missing (stale YAML / env after an SLT upgrade).
+    return env_value or yaml_value
+
+
+STUDIO_EXE = _resolve_studio_exe()
 
 STUDIO_TITLE_REGEX = os.getenv(
     "SIMPLICITY_STUDIO_TITLE_REGEX",
@@ -55,3 +97,18 @@ BOARD_SEARCH_TIMEOUT = int(
         str(_SETTINGS.get("board_search_timeout_seconds", 60)),
     )
 )
+
+
+def require_studio_exe() -> str:
+    """Return a valid Studio executable path or raise a clear error."""
+    if STUDIO_EXE and Path(STUDIO_EXE).is_file():
+        return STUDIO_EXE
+
+    configured = STUDIO_EXE or "(not set)"
+    raise RuntimeError(
+        "Simplicity Studio executable was not found.\n"
+        f"  Configured path: {configured}\n"
+        "Set SIMPLICITY_STUDIO_EXE to a valid studio.exe, update "
+        "studio.executable in config/settings.yaml, or install Studio "
+        "under %USERPROFILE%\\.silabs\\slt\\installs."
+    )

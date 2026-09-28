@@ -1,6 +1,7 @@
 import time
 
 from .configuration import PAGE_LOAD_TIMEOUT
+from .uia_helpers import UIA_TRANSIENT_ERRORS, element_name, element_type
 
 
 class WaitMixin:
@@ -56,7 +57,7 @@ class WaitMixin:
                     time.sleep(0.5)
                     continue
 
-            except Exception:
+            except UIA_TRANSIENT_ERRORS:
                 time.sleep(0.5)
                 continue
 
@@ -68,13 +69,8 @@ class WaitMixin:
             for element in window.descendants():
 
                 try:
-                    name = (
-                        element.element_info.name or ""
-                    ).lower()
-
-                    control_type = (
-                        element.element_info.control_type
-                    )
+                    name = element_name(element).lower()
+                    control_type = element_type(element)
 
                     if not element.is_visible():
                         continue
@@ -90,8 +86,8 @@ class WaitMixin:
                         loading = True
                         break
 
-                except Exception:
-                    pass
+                except UIA_TRANSIENT_ERRORS:
+                    continue
 
             if loading:
 
@@ -119,14 +115,12 @@ class WaitMixin:
 
                 try:
 
-                    name = (
-                        element.element_info.name or ""
-                    ).strip()
+                    name = element_name(element)
 
                     if (
                         name == "Project Configuration"
                         and
-                        element.element_info.control_type == "Text"
+                        element_type(element) == "Text"
                         and
                         element.is_visible()
                     ):
@@ -137,8 +131,8 @@ class WaitMixin:
 
                         return
 
-                except Exception:
-                    pass
+                except UIA_TRANSIENT_ERRORS:
+                    continue
 
             print(
                 "Project Configuration still loading..."
@@ -172,14 +166,12 @@ class WaitMixin:
 
                     try:
 
-                        name = (
-                            element.element_info.name or ""
-                        ).strip()
+                        name = element_name(element)
 
                         if (
                             name == "Project Configuration"
                             and
-                            element.element_info.control_type == "Text"
+                            element_type(element) == "Text"
                             and
                             element.is_visible()
                         ):
@@ -187,10 +179,10 @@ class WaitMixin:
                             found = True
                             break
 
-                    except Exception:
-                        pass
+                    except UIA_TRANSIENT_ERRORS:
+                        continue
 
-            except Exception:
+            except UIA_TRANSIENT_ERRORS:
                 pass
 
             if not found:
@@ -225,18 +217,27 @@ class WaitMixin:
             window = self.studio.wrapper_object()
             for element in window.descendants():
                 try:
-                    name = (element.element_info.name or "").strip()
+                    name = element_name(element)
+                    control_type = element_type(element)
 
-                    control_type = (element.element_info.control_type)
-
-                    if ( name.lower() == application_name.lower() and control_type == "Text" and element.is_visible()):
-                        print( f"Application result found: " f"{application_name}")
+                    if (
+                        name.lower() == application_name.lower()
+                        and control_type == "Text"
+                        and element.is_visible()
+                    ):
+                        print(
+                            f"Application result found: "
+                            f"{application_name}"
+                        )
                         return
 
-                except Exception:
-                    pass
+                except UIA_TRANSIENT_ERRORS:
+                    continue
 
-            print("Waiting for application result..." )
+            print("Waiting for application result...")
             time.sleep(0.5)
 
-        raise RuntimeError(f"Application '{application_name}' " f"did not become visible.")
+        raise RuntimeError(
+            f"Application '{application_name}' "
+            f"did not become visible."
+        )

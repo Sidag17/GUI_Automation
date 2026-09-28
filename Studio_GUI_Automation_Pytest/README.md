@@ -24,6 +24,7 @@ Studio_GUI_Automation_Pytest/
 |   |-- terminal.py
 |   |-- navigation.py
 |   |-- waits.py
+|   |-- uia_helpers.py
 |   |-- configuration.py
 |   `-- matrix.py
 |-- tests/
@@ -43,19 +44,32 @@ Studio_GUI_Automation_Pytest/
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+# Optional (editable install):
+python -m pip install -e ".[test]"
 ```
 
 ## 2. Configure Simplicity Studio
 
-Edit `config/settings.yaml` if needed, or set the environment variable:
+Set the Studio executable (required unless `config/settings.yaml` has a path):
 
 ```powershell
 $env:SIMPLICITY_STUDIO_EXE = "C:\path\to\studio.exe"
 ```
 
+Optional timeout overrides:
+
+```powershell
+$env:STUDIO_START_TIMEOUT = "120"
+$env:PAGE_LOAD_TIMEOUT = "60"
+$env:BOARD_SEARCH_TIMEOUT = "60"
+```
+
 ## 3. Add test cases in YAML
 
-Edit only `config/test_matrix.yaml` for normal board/application changes:
+Edit only `config/test_matrix.yaml` for normal board/application changes.
+
+By default only the smoke case (`brd2601b_blink_cmake`) is enabled.
+Set `enabled: true` on additional blocks for broader coverage.
 
 ```yaml
 test_cases:
@@ -65,13 +79,15 @@ test_cases:
     application: "AI/ML - SoC Blink EFR32"
     target_ide: "CMake (GCC/IAR/LLVM)"
     build_folder: "cmake_gcc"
+    count_ml_apps: false
 ```
 
-Add more blocks to execute more board/application combinations sequentially.
+Build verification currently supports **CMake targets only**. Invalid IDE
+values fail at matrix load time (before GUI work starts).
 
 ## 4. Run
 
-Basic:
+Basic (uses `pythonpath = src` from `pytest.ini`):
 
 ```powershell
 python -m pytest
@@ -100,6 +116,14 @@ The CMake test passes when all of the following succeed:
 6. At least one `*.s37` binary exists in `build/base`.
 
 Any failed step raises an exception and pytest reports the test as FAILED.
+
+## Screen-independence rules
+
+- Locate controls by AutomationId / accessible name / control type.
+- Interact with the resolved UIA wrapper (`click_input` / invoke).
+- Do **not** use absolute screen coordinates or tools like `pyautogui`.
+- Prefer condition waits over fixed `sleep` calls.
+- Tab discovery uses the UIA tree (Home tab sibling Groups), not pixel bands.
 
 ## Important
 

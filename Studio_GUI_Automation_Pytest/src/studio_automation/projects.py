@@ -1,10 +1,85 @@
 import time
 
-
 from .configuration import PAGE_LOAD_TIMEOUT
+from .uia_helpers import (
+    UIA_TRANSIENT_ERRORS,
+    element_name,
+    element_type,
+    is_usable,
+)
 
 
 class ProjectActions:
+    def _find_target_ide_combo(self, window):
+        """Locate the Target IDE ComboBox without a global first-match scan.
+
+        Prefer a ComboBox near a 'Target IDE' label; fall back to a
+        visible ComboBox whose current value looks like a known IDE.
+        """
+        known_markers = ("vs code", "cursor", "cmake", "makefile")
+        labeled_candidates = []
+        unmarked_candidates = []
+
+        # Collect labels that identify the Target IDE field.
+        label_parents = []
+        for element in window.descendants(control_type="Text"):
+            try:
+                name = element_name(element).lower()
+                if "target ide" not in name:
+                    continue
+                if not is_usable(element):
+                    continue
+                parent = element.parent()
+                if parent is not None:
+                    label_parents.append(parent)
+            except UIA_TRANSIENT_ERRORS:
+                continue
+
+        for element in window.descendants(control_type="ComboBox"):
+            try:
+                if not (element.is_visible() and element.is_enabled()):
+                    continue
+                if not is_usable(element):
+                    continue
+
+                name = element_name(element)
+                name_l = name.lower()
+                looks_like_ide = any(
+                    marker in name_l for marker in known_markers
+                )
+
+                near_label = False
+                try:
+                    parent = element.parent()
+                    if parent is not None:
+                        for label_parent in label_parents:
+                            if parent == label_parent:
+                                near_label = True
+                                break
+                            # Same container one level up (common Chromium layout).
+                            if (
+                                parent.parent() is not None
+                                and label_parent.parent() is not None
+                                and parent.parent() == label_parent.parent()
+                            ):
+                                near_label = True
+                                break
+                except UIA_TRANSIENT_ERRORS:
+                    near_label = False
+
+                if near_label and looks_like_ide:
+                    labeled_candidates.append(element)
+                elif looks_like_ide:
+                    unmarked_candidates.append(element)
+            except UIA_TRANSIENT_ERRORS:
+                continue
+
+        if labeled_candidates:
+            return labeled_candidates[0]
+        if unmarked_candidates:
+            return unmarked_candidates[0]
+        return None
+
     def select_target_ide(self, target_ide):
         self._require_studio()
 
@@ -22,33 +97,7 @@ class ProjectActions:
         # STEP 2: Find Target IDE ComboBox
         # --------------------------------------------------------
 
-        ide_combo = None
-
-        for element in window.descendants():
-
-            try:
-                if (
-                    element.element_info.control_type == "ComboBox"
-                    and element.is_visible()
-                    and element.is_enabled()
-                ):
-
-                    name = (
-                        element.element_info.name or ""
-                    ).strip()
-
-                    # Known Target IDE values
-                    if (
-                        "VS Code" in name
-                        or "Cursor" in name
-                        or "CMake" in name
-                        or "Makefile" in name
-                    ):
-                        ide_combo = element
-                        break
-
-            except Exception:
-                pass
+        ide_combo = self._find_target_ide_combo(window)
 
         if ide_combo is None:
             raise RuntimeError(
@@ -84,8 +133,6 @@ class ProjectActions:
 
         ide_combo.click_input()
 
-        time.sleep(0.5)
-
         # --------------------------------------------------------
         # STEP 5: Find dropdown option
         #
@@ -97,6 +144,7 @@ class ProjectActions:
         # --------------------------------------------------------
 
         start_time = time.time()
+        option_selected = False
 
         while time.time() - start_time < 10:
 
@@ -108,41 +156,26 @@ class ProjectActions:
 
                 try:
 
-                    name = (
-                        element.element_info.name or ""
-                    ).strip()
-
-                    control_type = (
-                        element.element_info.control_type
-                    )
+                    name = element_name(element)
+                    control_type = element_type(element)
 
                     if (
                         name.lower() == target_ide.lower()
                         and control_type != "ComboBox"
-                        and element.is_visible()
+                        and is_usable(element)
                     ):
 
-                        rect = element.rectangle()
+                        candidates.append(element)
 
-                        # Ignore hidden Chromium elements
-                        if (
-                            rect.width() > 0
-                            and rect.height() > 0
-                        ):
+                        print(
+                            "Possible IDE option:",
+                            repr(name),
+                            "| Type:",
+                            control_type,
+                        )
 
-                            candidates.append(element)
-
-                            print(
-                                "Possible IDE option:",
-                                repr(name),
-                                "| Type:",
-                                control_type,
-                                "| Rect:",
-                                rect
-                            )
-
-                except Exception:
-                    pass
+                except UIA_TRANSIENT_ERRORS:
+                    continue
 
             if candidates:
 
@@ -158,7 +191,7 @@ class ProjectActions:
                 candidates.sort(
                     key=lambda item:
                         priority.get(
-                            item.element_info.control_type,
+                            element_type(item),
                             100
                         )
                 )
@@ -167,13 +200,13 @@ class ProjectActions:
 
                 print(
                     "Selecting IDE option:",
-                    repr(option.element_info.name),
+                    repr(element_name(option)),
                     "| Type:",
-                    option.element_info.control_type
+                    element_type(option)
                 )
 
                 option.click_input()
-
+                option_selected = True
                 break
 
             print(
@@ -182,7 +215,7 @@ class ProjectActions:
 
             time.sleep(0.5)
 
-        else:
+        if not option_selected:
             raise RuntimeError(
                 f"Target IDE option '{target_ide}' "
                 f"was not found."
@@ -192,32 +225,18 @@ class ProjectActions:
         # STEP 6: Verify selection actually changed
         # --------------------------------------------------------
 
-        time.sleep(0.5)
-
-        window = self.studio.wrapper_object()
-
+        verify_deadline = time.time() + 10
         selected = False
 
-        for element in window.descendants():
-
-            try:
-
-                if (
-                    element.element_info.control_type
-                    == "ComboBox"
-                    and
-                    (
-                        element.element_info.name or ""
-                    ).strip().lower()
-                    == target_ide.lower()
-                    and element.is_visible()
-                ):
-
+        while time.time() < verify_deadline:
+            window = self.studio.wrapper_object()
+            combo = self._find_target_ide_combo(window)
+            if combo is not None:
+                current = element_name(combo).lower()
+                if current == target_ide.lower():
                     selected = True
                     break
-
-            except Exception:
-                pass
+            time.sleep(0.3)
 
         if not selected:
 

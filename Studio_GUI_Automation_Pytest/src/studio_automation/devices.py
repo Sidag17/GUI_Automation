@@ -3,6 +3,7 @@ import time
 from pywinauto.keyboard import send_keys
 
 from .configuration import PAGE_LOAD_TIMEOUT
+from .uia_helpers import UIA_TRANSIENT_ERRORS, element_auto_id, element_name, element_type, is_usable
 
 
 class DeviceActions:
@@ -53,37 +54,16 @@ class DeviceActions:
 
                 try:
 
-                    name = (
-                        element.element_info.name
-                        or ""
-                    ).strip()
+                    name = element_name(element)
 
                     if name.lower() != "devices":
                         continue
 
-                    if not element.is_visible():
+                    if not is_usable(element):
                         continue
 
-                    rect = element.rectangle()
-
-                    if (
-                        rect.width() <= 0
-                        or rect.height() <= 0
-                    ):
-                        continue
-
-                    control_type = (
-                        element
-                        .element_info
-                        .control_type
-                    )
-
-                    automation_id = (
-                        element
-                        .element_info
-                        .automation_id
-                        or ""
-                    ).strip()
+                    control_type = element_type(element)
+                    automation_id = element_auto_id(element)
 
                     print(
                         "DEVICES candidate:",
@@ -92,8 +72,6 @@ class DeviceActions:
                         control_type,
                         "| AutomationID:",
                         repr(automation_id),
-                        "| Rect:",
-                        rect,
                     )
 
                     # Prefer naturally clickable controls.
@@ -119,8 +97,8 @@ class DeviceActions:
                         )
                     )
 
-                except Exception:
-                    pass
+                except UIA_TRANSIENT_ERRORS:
+                    continue
 
             if candidates:
 
@@ -309,9 +287,8 @@ class DeviceActions:
             f"Search text entered: {board_name}"
         )
 
-        # Give Studio a small amount of time to rebuild
-        # the filtered device-result UI.
-        time.sleep(0.5)
+        # Condition wait: filtered results must appear before select.
+        self._wait_for_board_result(board_name)
 
 
     def select_board(self, board_name):
@@ -325,16 +302,8 @@ class DeviceActions:
             )
         )
 
-        name = (
-            board_result.element_info.name
-            or ""
-        ).strip()
-
-        control_type = (
-            board_result
-            .element_info
-            .control_type
-        )
+        name = element_name(board_result)
+        control_type = element_type(board_result)
 
         print(
             "Board result found:",
@@ -349,9 +318,7 @@ class DeviceActions:
 
             board_result.scroll_into_view()
 
-            time.sleep(0.3)
-
-        except Exception:
+        except UIA_TRANSIENT_ERRORS:
             pass
 
         # UI may rebuild after scrolling, so resolve again.
@@ -363,7 +330,7 @@ class DeviceActions:
 
         print(
             f"Clicking board result: "
-            f"{board_result.element_info.name}"
+            f"{element_name(board_result)}"
         )
 
         board_result.click_input()
